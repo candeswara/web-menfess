@@ -47,20 +47,20 @@ const limiter = rateLimit({
 });
 
 // --- 4. ENDPOINT API ---
-app.post('/api/aspirasi', limiter, async (req, res) => {
-    let { nama, aspirasi, email_confirm } = req.body;
+app.post('/api/pesan', limiter, async (req, res) => {
+    let { nama, pesan, email_confirm } = req.body;
 
     if (email_confirm) return res.status(400).json({ message: "Spam detected." });
 
     const cleanNama = validator.escape(nama || 'Anonim').trim();
-    const cleanAspirasi = validator.escape(aspirasi || '').trim();
+    const cleanPesan = validator.escape(pesan || '').trim();
 
-    if (validator.isEmpty(cleanAspirasi) || cleanAspirasi.length < 10) {
-        return res.status(400).json({ message: "Aspirasi minimal 10 karakter." });
+    if (validator.isEmpty(cleanPesan) || cleanPesan.length < 10) {
+        return res.status(400).json({ message: "Pesan minimal 10 karakter." });
     }
 
     try {
-        const text = `<b>📩 ASPIRASI BARU</b>\n\n<b>Dari:</b> ${validator.unescape(cleanNama)}\n<b>Pesan:</b>\n<i>${validator.unescape(cleanAspirasi)}</i>`;
+        const text = `<b>MENFESS BARU</b>\n\n<b>Dari:</b> ${validator.unescape(cleanNama)}\n<b>Pesan:</b>\n<i>${validator.unescape(cleanPesan)}</i>`;
         
         await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
             chat_id: process.env.TELEGRAM_CHAT_ID,
@@ -68,11 +68,11 @@ app.post('/api/aspirasi', limiter, async (req, res) => {
             parse_mode: 'HTML'
         });
         
-        res.status(200).json({ message: "Aspirasi berhasil dikirim!" });
+        res.status(200).json({ message: "Pesan berhasil dikirim!" });
     } catch (error) {
         res.status(500).json({ message: "Gagal terhubung ke Telegram." });
     }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
