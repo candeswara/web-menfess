@@ -10,7 +10,7 @@ const app = express();
 // --- 1. KONFIGURASI CORS ---
 const allowedOrigins = [
     'http://localhost:3000', 
-    'https://domain-kamu.com' // Ganti dengan domain asli saat hosting
+    'https://menfess.domain.com'
 ];
 
 app.use(cors({
@@ -18,7 +18,6 @@ app.use(cors({
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            // Melempar error spesifik agar bisa ditangkap middleware
             callback(new Error('CORS_POLICY_VIOLATION'));
         }
     }
