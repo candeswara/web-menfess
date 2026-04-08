@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MenFess - Platform Curhat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+        body { font-family: 'Montserrat', sans-serif; }
+        .hp-field { display: none !important; opacity: 0; position: absolute; z-index: -1; }
+    </style>
+</head>
+<body class="bg-slate-50 flex justify-center min-h-screen">
+
+    <main class="w-full max-w-[480px] bg-white min-h-screen shadow-xl flex flex-col border-x border-slate-100">
+        
+        <header class="pt-14 pb-8 px-10">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-slate-900 leading-none">MenFess</h1>
+                    <span class="text-[10px] font-bold text-indigo-500 uppercase tracking-[0.2em]">#ayocurhat</span>
+                </div>
+            </div>
+            <p class="text-slate-500 text-sm font-medium leading-relaxed">
+                Platform resmi penyaluran curhatan kalian. Sampaikan curhatanmu secara anonim atau terbuka.
+            </p>
+        </header>
+
+        <section class="px-10 pb-12 flex-grow">
+            <form id="aspirasiForm" class="space-y-7">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Nama / Organisasi</label>
+                    <input type="text" name="nama" 
+                        class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300"
+                        placeholder="Contoh: Mahasiswa IT / Anonim">
+                </div>
+
+                <div class="hp-field">
+                    <input type="text" name="email_confirm" tabindex="-1" autocomplete="off">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Isi Aspirasi</label>
+                    <textarea name="aspirasi" required
+                        class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl h-52 focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all resize-none placeholder:text-slate-300"
+                        placeholder="Apa yang ingin kamu sampaikan?"></textarea>
+                </div>
+
+                <button type="submit" id="btnKirim"
+                    class="w-full bg-slate-900 hover:bg-black text-white font-bold py-5 rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-[0.98] flex justify-center items-center gap-3">
+                    <span id="txtKirim">Kirim Sekarang</span>
+                </button>
+            </form>
+
+            <div id="statusAlert" class="hidden mt-8 p-5 rounded-2xl text-center text-sm font-bold border"></div>
+        </section>
+
+        <footer class="pb-10 text-center">
+            <div class="inline-block px-4 py-2 bg-slate-50 rounded-full border border-slate-100">
+                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">&copy; 2026 DPM-PM</p>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        const form = document.getElementById('aspirasiForm');
+        const statusAlert = document.getElementById('statusAlert');
+        const btnKirim = document.getElementById('btnKirim');
+        const txtKirim = document.getElementById('txtKirim');
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            btnKirim.disabled = true;
+            txtKirim.innerText = "Memproses...";
+            statusAlert.classList.add('hidden');
+
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/api/aspirasi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const contentType = response.headers.get("content-type");
+                
+                // Pastikan respon adalah JSON sebelum diproses
+                if (contentType && contentType.includes("application/json")) {
+                    const resData = await response.json();
+                    statusAlert.classList.remove('hidden');
+                    
+                    if (response.ok) {
+                        statusAlert.className = "mt-8 p-5 rounded-2xl text-center text-sm font-bold bg-emerald-50 text-emerald-700 border-emerald-100";
+                        statusAlert.innerText = "Success " + resData.message;
+                        form.reset();
+                    } else {
+                        statusAlert.className = "mt-8 p-5 rounded-2xl text-center text-sm font-bold bg-rose-50 text-rose-700 border-rose-100";
+                        statusAlert.innerText = "Error: " + resData.message;
+                    }
+                } else {
+                    // Jika yang datang adalah HTML (Error 404/500 mentah)
+                    throw new Error("Server mengirim respon yang tidak valid (HTML).");
+                }
+
+            } catch (err) {
+                statusAlert.classList.remove('hidden');
+                // Penanganan khusus jika fetch gagal total (misal server mati atau CORS memblokir di level browser)
+                if (err.message.includes("fetch") || err.name === "TypeError") {
+                    statusAlert.className = "mt-8 p-5 rounded-2xl text-center text-sm font-bold bg-amber-50 text-amber-700 border-amber-200";
+                    statusAlert.innerHTML = "⚠️ <b>Akses Dibatasi</b><br><span class='text-xs'>Permintaan diblokir oleh kebijakan keamanan browser (CORS).</span>";
+                } else {
+                    statusAlert.className = "mt-8 p-5 rounded-2xl text-center text-sm font-bold bg-rose-50 text-rose-700 border-rose-100";
+                    statusAlert.innerText = "❌ " + err.message;
+                }
+            } finally {
+                btnKirim.disabled = false;
+                txtKirim.innerText = "Kirim Sekarang";
+            }
+        };
+    </script>
+</body>
+</html>
