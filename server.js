@@ -8,11 +8,7 @@ const validator = require('validator');
 const app = express();
 
 // --- 1. KONFIGURASI CORS ---
-const allowedOrigins = [
-    'http://localhost:3000', 
-    'https://menfess.domain.com'
-];
-
+const allowedOrigins = ['http://localhost:3001'];
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
@@ -23,55 +19,77 @@ app.use(cors({
     }
 }));
 
-// --- 2. MIDDLEWARE ERROR HANDLER (Mencegah Respon HTML) ---
-app.use((err, req, res, next) => {
-    if (err.message === 'CORS_POLICY_VIOLATION') {
-        return res.status(403).json({ 
-            message: "Akses ditolak: Domain tidak diizinkan oleh kebijakan CORS." 
-        });
-    }
-    next(err);
-});
-
+app.disable('x-powered-by');
 app.use(express.json());
 app.use(express.static('public'));
 
-// --- 3. RATE LIMITING ---
+// --- 2. RATE LIMITING ---
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
     handler: (req, res) => {
-        res.status(429).json({ message: "Batas pengiriman tercapai. Coba lagi dalam 15 menit." });
+        res.status(429).json({ message: "Batas pengiriman tercapai. Coba lagi nanti." });
     }
 });
 
-// --- 4. ENDPOINT API ---
+// --- 3. ENDPOINT API ---
 app.post('/api/pesan', limiter, async (req, res) => {
-    let { nama, pesan, email_confirm } = req.body;
-
-    if (email_confirm) return res.status(400).json({ message: "Spam detected." });
-
-    const cleanNama = validator.escape(nama || 'Anonim').trim();
-    const cleanPesan = validator.escape(pesan || '').trim();
-
-    if (validator.isEmpty(cleanPesan) || cleanPesan.length < 10) {
-        return res.status(400).json({ message: "Pesan minimal 10 karakter." });
-    }
-
     try {
-        const text = `<b>MENFESS BARU</b>\n\n<b>Dari:</b> ${validator.unescape(cleanNama)}\n<b>Pesan:</b>\n<i>${validator.unescape(cleanPesan)}</i>`;
-        
-        await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            chat_id: process.env.TELEGRAM_CHAT_ID,
-            text: text,
-            parse_mode: 'HTML'
+        const { nama, pesan, email_confirm } = req.body;
+
+        if (email_confirm) return res.status(400).json({ message: "Spam detected." });
+
+        if (!process.env.DISCORD_WEBHOOK_URL) {
+            console.error("EROR: DISCORD_WEBHOOK_URL tidak ditemukan di .env");
+            return res.status(500).json({ message: "Konfigurasi server bermasalah." });
+        }
+
+        const cleanNama = validator.escape(nama || 'Anonim').trim();
+        const cleanPesan = validator.escape(pesan || '').trim();
+
+        if (validator.isEmpty(cleanPesan) || cleanPesan.length < 10) {
+            return res.status(400).json({ message: "Pesan minimal 10 karakter." });
+        }
+
+        // Kirim ke Discord
+        await axios.post(process.env.DISCORD_WEBHOOK_URL, {
+            embeds: [
+                {
+                    title: "📩 MenFess Baru",
+                    color: 5793266,
+                    fields: [
+                        {
+                            name: "👤 Pengirim",
+                            value: validator.unescape(cleanNama),
+                            inline: true
+                        },
+                        {
+                            name: "📝 Isi Pesan",
+                            value: validator.unescape(cleanPesan)
+                        }
+                    ],
+                    footer: {
+                        text: "Web MenFess • " + new Date().toLocaleString('id-ID')
+                    }
+                }
+            ]
         });
-        
+
         res.status(200).json({ message: "Pesan berhasil dikirim!" });
+
     } catch (error) {
-        res.status(500).json({ message: "Gagal terhubung ke Telegram." });
+        console.error("Detail Error:", error.message);
+        res.status(500).json({ message: "Terjadi kesalahan saat mengirim pesan." });
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// --- 4. GLOBAL ERROR HANDLER (Agar tidak kirim HTML) ---
+app.use((err, req, res, next) => {
+    if (err.message === 'CORS_POLICY_VIOLATION') {
+        return res.status(403).json({ message: "Akses ditolak oleh kebijakan CORS." });
+    }
+    res.status(500).json({ message: "Internal Server Error." });
+});
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`🚀 Server berjalan di port ${PORT}`));
